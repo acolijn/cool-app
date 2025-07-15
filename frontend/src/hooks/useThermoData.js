@@ -5,26 +5,35 @@ function useThermoData(fluid, diagram = 'ph') {
 
   useEffect(() => {
     setData(null)
-    const route = diagram === 'ts' ? 'ts-data' : 'ph-data'
 
-    fetch(`http://localhost:5050/thermo/${route}?fluid=${fluid}&t_step=25`)
+    let route = ''
+    let stepParam = ''
+
+    switch (diagram) {
+      case 'ph':
+        route = 'ph-data'
+        stepParam = 't_step=15'
+        break
+      case 'ts':
+        route = 'ts-data'
+        stepParam = 'p_step=15'
+        break
+      default:
+        console.error('Unknown diagram type:', diagram)
+        return
+    }
+
+    const url = `http://localhost:5050/thermo/${route}?fluid=${fluid}&${stepParam}`
+    console.log('Fetching', url)
+
+    fetch(url)
       .then(res => {
         if (!res.ok) throw new Error('Failed to fetch thermo data')
         return res.json()
       })
-      .then(json => {
-        const isValid = json?.saturation && (
-          diagram === 'ph'
-            ? json.saturation.hL && json.saturation.hV
-            : json.saturation.sL && json.saturation.sV
-        )
-        if (!isValid) {
-          console.warn(`Missing saturation data for diagram: ${diagram}`)
-          return
-        }
-        setData(json)
-      })
+      .then(setData)
       .catch(err => console.error('Error loading thermo data:', err))
+
   }, [fluid, diagram])
 
   return data

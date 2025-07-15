@@ -7,6 +7,7 @@ thermo_blueprint = Blueprint("thermo", __name__)
 
 @thermo_blueprint.route("/ph-data")
 def ph_data():
+    print("Fetching p-H data.........")
     fluid = request.args.get('fluid', 'Xenon')
     t_step = int(request.args.get('t_step', 25))
     h_min = float(request.args.get('h_min', 0))
@@ -70,6 +71,7 @@ def ph_data():
             qualities.append({"Q": round(Q, 2), "h": h_q, "p": p_q})
 
     return jsonify({
+        "fluid": fluid,
         "isotherms": isotherms,
         "saturation": {"hL": hL, "hV": hV[::-1], "p": psat},
         "qualities": qualities,
@@ -78,8 +80,9 @@ def ph_data():
 
 @thermo_blueprint.route("/ts-data")
 def ts_data():
+    print("Fetching TS data.........")
     fluid = request.args.get('fluid', 'Xenon')
-    t_step = int(request.args.get('t_step', 25))
+    p_steps = int(request.args.get('p_steps', 10))  # NEW: use p_steps
 
     T_crit = PropsSI('TCRIT', fluid)
     T_min = np.ceil((PropsSI('TMIN', fluid) + 1) / 10) * 10
@@ -87,40 +90,60 @@ def ts_data():
 
     p_min = 1e5
     p_max = PropsSI('PCRIT', fluid) * 2.99
-    pressures = np.logspace(np.log10(p_min), np.log10(p_max), 300)
+    pressures = np.logspace(np.log10(p_min), np.log10(p_max), p_steps)
 
-    isotherms = []
-    for T in np.arange(T_min, T_max + 1, t_step):
-        s_vals, T_vals = [], []
-        for p in pressures:
+    isobars = []
+    for p in pressures:
+        T_vals = np.arange(T_min, T_max + 1, 1)
+        s_vals = []
+        T_plot = []
+        for T in T_vals:
             try:
-                s = PropsSI('S', 'T', T, 'P', p, fluid) / 1000
+                s = PropsSI('S', 'T', T, 'P', p, fluid) / 1000  # kJ/kg·K
                 s_vals.append(s)
-                T_vals.append(T)
+                T_plot.append(T)
             except:
                 continue
-        if s_vals and T_vals:
-            isotherms.append({"T": T, "s": s_vals, "T_vals": T_vals})
+        if T_plot and s_vals:
+            isobars.append({"p": round(p / 1e5, 2), "T": T_plot, "s": s_vals})
 
+    # Saturation curve in T-S space
     Tsat = np.linspace(T_min, T_max, 300)
-    sL, sV, Tsat_out = [], [], []
+    sL, sV, T_saturation = [], [], []
     for T in Tsat:
         try:
             s_liq = PropsSI('S', 'T', T, 'Q', 0, fluid) / 1000
             s_vap = PropsSI('S', 'T', T, 'Q', 1, fluid) / 1000
             sL.append(s_liq)
             sV.append(s_vap)
-            Tsat_out.append(T)
+            T_saturation.append(T)
         except:
             continue
 
-    try:
-        s_crit = PropsSI('S', 'T', T_crit, 'Q', 0.5, fluid) / 1000
-    except:
-        s_crit = None
+    # lines of quality in T-S space
+        # Quality lines in T-S space
+    qualities = []
+    for Q in np.linspace(0.1, 0.9, 9):
+        s_q = []
+        T_q = []
+        for T in np.linspace(T_min + 1, T_max - 1, 300):
+            try:
+                s = PropsSI('S', 'T', T, 'Q', Q, fluid) / 1000
+                s_q.append(s)
+                T_q.append(T)
+            except:
+                continue
+        if s_q and T_q:
+            qualities.append({"Q": round(Q, 2), "s": s_q, "T": T_q})
 
     return jsonify({
-        "isotherms": isotherms,
-        "saturation": {"sL": sL, "sV": sV[::-1], "T": Tsat_out},
-        "critical": {"s": s_crit, "T": T_crit}
+        "fluid": fluid,
+        "isobars": isobars,
+        "saturation": {
+            "sL": sL,
+            "sV": sV[::-1],
+            "T": T_saturation
+        },
+        "qualities": qualities
+
     })

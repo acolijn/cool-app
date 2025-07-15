@@ -3,10 +3,26 @@ import useThermoData from '../hooks/useThermoData'
 import { getIsothermColor } from '../utils/colorScale'
 
 function buildPHTraces(data) {
+  console.log('Building p-H traces for', data.fluid)
+  console.log('Data:', data)
+
   const traces = []
+
+  // Add the saturation curve
+  traces.push({
+    x: data.saturation.hL.concat(data.saturation.hV),
+    y: data.saturation.p.concat([...data.saturation.p].reverse()),
+    fill: 'toself',
+    type: 'scatter',
+    mode: 'lines',
+    line: { color: 'black' },
+    fillcolor: 'rgba(173,216,230,0.2)',
+  })
+
   const Tmin = Math.min(...data.isotherms.map(i => i.T))
   const Tmax = Math.max(...data.isotherms.map(i => i.T))
 
+  // In the p-H diagram we plot isotherms
   data.isotherms.forEach(iso => {
     const color = getIsothermColor(iso.T, Tmin, Tmax)
     traces.push({
@@ -19,59 +35,41 @@ function buildPHTraces(data) {
     })
   })
 
+  // Add the quality lines
   data.qualities.forEach(line => {
     traces.push({
       x: line.h,
       y: line.p,
       type: 'scatter',
       mode: 'lines',
-      line: { color: 'red', dash: 'dash' },
+      line: { color: 'red', dash: 'dash', width: 0.8 },
       name: `Q=${line.Q}`
     })
-  })
-
-  traces.push({
-    x: data.saturation.hL.concat(data.saturation.hV),
-    y: data.saturation.p.concat([...data.saturation.p].reverse()),
-    fill: 'toself',
-    type: 'scatter',
-    mode: 'lines',
-    line: { color: 'black' },
-    fillcolor: 'rgba(173,216,230,0.2)',
-    name: 'Saturation dome'
   })
 
   return traces
 }
 
 function buildTSTraces(data) {
+  console.log('Building TS traces for', data.fluid)
+  console.log('Data:', data)
   const traces = []
-  const Tmin = Math.min(...data.isotherms.map(i => i.T))
-  const Tmax = Math.max(...data.isotherms.map(i => i.T))
-
-  data.isotherms.forEach(iso => {
-    const color = getIsothermColor(iso.T, Tmin, Tmax)
+  // In the TS diagram we plot isobars
+  const Pmin = Math.min(...data.isobars.map(i => i.p))
+  const Pmax = Math.max(...data.isobars.map(i => i.p))
+  data.isobars.forEach(iso => {
+    const color = getIsothermColor(iso.p, Pmin, Pmax)
     traces.push({
       x: iso.s,
       y: iso.T,
       mode: 'lines',
       line: { color: color, dash: 'dot' },
-      hovertemplate: `T = ${iso.T} K<extra></extra>`,
+      hovertemplate: `P = ${iso.p} bar<extra></extra>`,
       showlegend: false
     })
   })
 
-  data.qualities.forEach(line => {
-    traces.push({
-      x: line.s,
-      y: line.T,
-      type: 'scatter',
-      mode: 'lines',
-      line: { color: 'red', dash: 'dash' },
-      name: `Q=${line.Q}`
-    })
-  })
-
+  // Add the saturation lines
   traces.push({
     x: data.saturation.sL.concat(data.saturation.sV),
     y: data.saturation.T.concat([...data.saturation.T].reverse()),
@@ -80,7 +78,18 @@ function buildTSTraces(data) {
     mode: 'lines',
     line: { color: 'black' },
     fillcolor: 'rgba(173,216,230,0.2)',
-    name: 'Saturation dome'
+  })
+
+  // Add the quality lines
+  data.qualities.forEach(line => {
+    traces.push({
+      x: line.s,
+      y: line.T,
+      type: 'scatter',
+      mode: 'lines',
+      line: { color: 'red', dash: 'dash', width: 0.8 },
+      name: `Q=${line.Q}`
+    })
   })
 
   return traces
@@ -92,36 +101,38 @@ function ThermoPlot({ fluid, diagram }) {
   if (!data) return <p style={{ color: '#666' }}>Loading...</p>
 
   let traces = []
+  let layout = {
+    xaxis: { title: { text: '' } },
+    yaxis: { title: { text: '' } },
+  }   
   switch (diagram) {
     case 'ph':
+      if (!data.isotherms) return <p style={{ color: '#666' }}>Loading p–H data…</p>
+
       traces = buildPHTraces(data)
+      layout.xaxis.type = 'linear'
+      layout.yaxis.type = 'log'
+      layout.xaxis.title.text = 'Enthalpy (kJ/kg)'
+      layout.yaxis.title.text = 'Pressure (bar)'
+
       break
     case 'ts':
+      if (!data.isobars) return <p style={{ color: '#666' }}>Loading T–S data…</p>
+
       traces = buildTSTraces(data)
+      layout.xaxis.type = 'linear'
+      layout.yaxis.type = 'linear'
+      layout.xaxis.title.text = 'Entropy (kJ/kg·K)'
+      layout.yaxis.title.text = 'Temperature (K)'
       break
     default:
       traces = []
   }
-
-  const layout = {
-    xaxis: {
-      title: {
-        text: diagram === 'ph' ? 'Enthalpy (kJ/kg)' : 'Entropy (kJ/kg·K)',
-        font: { size: 16, family: 'sans-serif' }
-      }
-    },
-    yaxis: {
-      type: diagram === 'ph' ? 'log' : 'linear',
-      title: {
-        text: diagram === 'ph' ? 'Pressure (bar)' : 'Temperature (K)',
-        font: { size: 16, family: 'sans-serif' }
-      }
-    },
-    showlegend: false,
-    height: 600,
-    margin: { l: 80, r: 40, b: 70, t: 30 },
-    font: { family: 'sans-serif', size: 14 }
-  }
+  layout.showlegend = false
+  layout.height = 700
+  layout.width = 900
+  layout.margin = { l: 80, r: 40, b: 70, t: 30 }
+  layout.font = { family: 'sans-serif', size: 16 }
 
   return <Plot data={traces} layout={layout} config={{ responsive: true }} />
 }
