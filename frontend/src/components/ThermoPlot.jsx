@@ -1,3 +1,4 @@
+import React, { useState, useCallback, useEffect } from 'react'
 import Plot from 'react-plotly.js'
 import useThermoData from '../hooks/useThermoData'
 import { getIsothermColor } from '../utils/colorScale'
@@ -95,46 +96,108 @@ function buildTSTraces(data) {
   return traces
 }
 
-function ThermoPlot({ fluid, diagram }) {
-  const data = useThermoData(fluid, diagram)
+function ThermoPlot({ fluid, diagram, zoomParams, setZoomParams }) {
+  //const [zoomParams, setZoomParams] = useState(null)
+  console.log('Rendering ThermoPlot for', fluid, 'diagram:', diagram, 'zoomParams:', zoomParams)
+
+  // Fetch the thermo data based on fluid, diagram type, and zoom parameters
+  const data = useThermoData(fluid, diagram, zoomParams)
+
+  const [layout, setLayout] = useState({
+    xaxis: { title: { text: '' }, type: 'linear' },
+    yaxis: { title: { text: '' }, type: 'linear' },
+    showlegend: false,
+    height: 700,
+    width: 900,
+    margin: { l: 80, r: 40, b: 70, t: 30 },
+    font: { family: 'sans-serif', size: 16 }
+  })
+
+  useEffect(() => {
+    if (!data) return
+  
+    setLayout(prev => {
+      const updated = { ...prev }
+  
+      if (diagram === 'ph') {
+        updated.xaxis.title.text = 'Enthalpy (kJ/kg)'
+        updated.yaxis.title.text = 'Pressure (bar)'
+        updated.xaxis.type = 'linear'
+        updated.yaxis.type = 'log'
+      } else if (diagram === 'ts') {
+        updated.xaxis.title.text = 'Entropy (kJ/kg·K)'
+        updated.yaxis.title.text = 'Temperature (K)'
+        updated.xaxis.type = 'linear'
+        updated.yaxis.type = 'linear'
+      }
+  
+      return updated
+    })
+  }, [diagram, data])
+
+  // Handle relayout events to capture zoom and pan changes
+  const handleRelayout = useCallback((event) => {
+    console.log('Relayout event:', event)
+    //if (!data) return;
+
+/*     switch (diagram) {
+      case 'ph':
+        nLines = data.isotherms.length
+        break
+      case 'ts':
+        nLines = data.isobars.length
+        break
+      default:
+        console.warn('Unknown diagram type:', diagram)
+        return
+    } */
+
+    const xRange = event['xaxis.range[0]'] !== undefined
+      ? [event['xaxis.range[0]'], event['xaxis.range[1]']]
+      : null
+
+    const yRange = event['yaxis.range[0]'] !== undefined
+      ? [event['yaxis.range[0]'], event['yaxis.range[1]']]
+      : null
+
+    if (diagram === 'ph' && xRange && yRange) {
+      const h_min = parseFloat(xRange[0])
+      const h_max = parseFloat(xRange[1])
+      const p_min = parseFloat(yRange[0])
+      const p_max = parseFloat(yRange[1])
+      setZoomParams({ h_min, h_max, p_min, p_max, t_step: 5, _ts: Date.now() })  
+    }
+  }, [fluid, diagram, setZoomParams, zoomParams]) // eslint-disable-line react-hooks/exhaustive-deps
+  //}, [data, diagram, nLines])
+  console.log('Zoom params:', zoomParams)
+
+  //const data = useThermoData(fluid, diagram, zoomParams
+
+  //const data = useThermoData(fluid, diagram)
 
   if (!data) return <p style={{ color: '#666' }}>Loading...</p>
 
   let traces = []
-  let layout = {
-    xaxis: { title: { text: '' } },
-    yaxis: { title: { text: '' } },
-  }   
+  
   switch (diagram) {
     case 'ph':
       if (!data.isotherms) return <p style={{ color: '#666' }}>Loading p–H data…</p>
-
       traces = buildPHTraces(data)
-      layout.xaxis.type = 'linear'
-      layout.yaxis.type = 'log'
-      layout.xaxis.title.text = 'Enthalpy (kJ/kg)'
-      layout.yaxis.title.text = 'Pressure (bar)'
-
       break
     case 'ts':
       if (!data.isobars) return <p style={{ color: '#666' }}>Loading T–S data…</p>
-
       traces = buildTSTraces(data)
-      layout.xaxis.type = 'linear'
-      layout.yaxis.type = 'linear'
-      layout.xaxis.title.text = 'Entropy (kJ/kg·K)'
-      layout.yaxis.title.text = 'Temperature (K)'
       break
     default:
       traces = []
   }
-  layout.showlegend = false
-  layout.height = 700
-  layout.width = 900
-  layout.margin = { l: 80, r: 40, b: 70, t: 30 }
-  layout.font = { family: 'sans-serif', size: 16 }
 
-  return <Plot data={traces} layout={layout} config={{ responsive: true }} />
+  return (<Plot
+    data={traces}
+    layout={layout}
+    config={{ responsive: true }}
+    onRelayout={handleRelayout}/>
+  )
 }
 
 export default ThermoPlot
