@@ -99,6 +99,10 @@ function buildTSTraces(data) {
 //import React, { useState } from 'react'
 
 function ThermoPlot({ fluid, diagram }) {
+  // Track axis ranges for zoom persistence
+  const [xRange, setXRange] = useState(null)
+  const [yRange, setYRange] = useState(null)
+
   //const [zoomParams, setZoomParams] = useState(null)
   console.log('Rendering ThermoPlot for', fluid, 'diagram:', diagram)
 
@@ -137,7 +141,11 @@ function ThermoPlot({ fluid, diagram }) {
   let layout = {
     xaxis: { title: { text: '' } },
     yaxis: { title: { text: '' } },
-  }   
+  }
+  // Inject stored ranges if available
+  if (xRange) layout.xaxis.range = xRange
+  if (yRange) layout.yaxis.range = yRange
+
   switch (diagram) {
     case 'ph':
       if (!data.isotherms) return <p style={{ color: '#666' }}>Loading p–H data…</p>
@@ -173,6 +181,15 @@ function ThermoPlot({ fluid, diagram }) {
         data={traces}
         layout={layout}
         config={{ responsive: true }}
+        onRelayout={e => {
+          // e can have xaxis.range[0], xaxis.range[1], yaxis.range[0], yaxis.range[1]
+          if (e['xaxis.range[0]'] !== undefined && e['xaxis.range[1]'] !== undefined) {
+            setXRange([e['xaxis.range[0]'], e['xaxis.range[1]']])
+          }
+          if (e['yaxis.range[0]'] !== undefined && e['yaxis.range[1]'] !== undefined) {
+            setYRange([e['yaxis.range[0]'], e['yaxis.range[1]']])
+          }
+        }}
       />
     </div>
   )
