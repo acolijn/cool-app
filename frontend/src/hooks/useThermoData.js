@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 //function useThermoData(fluid, diagram = 'ph') {
-function useThermoData(fluid, diagram = 'ph', zoomParams = null) {
+function useThermoData(fluid, diagram = 'ph') {
   const [data, setData] = useState(null)
   
   useEffect(() => {
@@ -9,7 +9,7 @@ function useThermoData(fluid, diagram = 'ph', zoomParams = null) {
 
     let route = ''
     let stepParam = ''
-    console.log('Fetching thermo data for fluid:', fluid, 'diagram:', diagram, 'zoomParams:', zoomParams)
+    console.log('useThermoData: Fetching thermo data for fluid:', fluid, 'diagram:', diagram)
     
     switch (diagram) {
       case 'ph':
@@ -21,43 +21,33 @@ function useThermoData(fluid, diagram = 'ph', zoomParams = null) {
         stepParam = 'p_step=15'
         break
       default:
-        console.error('Unknown diagram type:', diagram)
+        console.error('useThermoData: Unknown diagram type:', diagram)
         return
     }
     const baseUrl = `http://localhost:5050/thermo/${route}?fluid=${fluid}`
 
     const queryParams = new URLSearchParams()
 
-    console.log('Zoom params:', zoomParams)
-
     if (diagram === 'ph') {
-      if (zoomParams?.h_min !== undefined) queryParams.append('h_min', zoomParams.h_min)
-      if (zoomParams?.h_max !== undefined) queryParams.append('h_max', zoomParams.h_max)
-      if (zoomParams?.p_min !== undefined) queryParams.append('p_min', zoomParams.p_min)
-      if (zoomParams?.p_max !== undefined) queryParams.append('p_max', zoomParams.p_max)
-      if (zoomParams?.t_step !== undefined) queryParams.append('t_step', zoomParams.t_step)
-      else queryParams.append('t_step', 15)
+      queryParams.append('t_step', 15)
+    } else if (diagram === 'ts') {
+      queryParams.append('p_steps', 15)
     }
 
-    if (diagram === 'ts') {
-      if (zoomParams?.T_min !== undefined) queryParams.append('T_min', zoomParams.T_min)
-      if (zoomParams?.T_max !== undefined) queryParams.append('T_max', zoomParams.T_max)
-      if (zoomParams?.p_steps !== undefined) queryParams.append('p_steps', zoomParams.p_steps)
-      else queryParams.append('p_steps', 15)
-    }
 
     const fullUrl = `${baseUrl}&${queryParams.toString()}`
-    console.log('Fetching', fullUrl)
+
+    console.log('useThermoData: Fetching', fullUrl)
 
     fetch(fullUrl)
       .then(res => {
-        if (!res.ok) throw new Error('Failed to fetch thermo data')
+        if (!res.ok) throw new Error('useThermoData: Failed to fetch thermo data')
         return res.json()
       })
       .then(setData)
-      .catch(err => console.error('Error loading thermo data:', err))
+      .catch(err => console.error('useThermoData: Error loading thermo data:', err))
 
-  }, [fluid, diagram, zoomParams])
+  }, [fluid, diagram])
 
   return data
 }

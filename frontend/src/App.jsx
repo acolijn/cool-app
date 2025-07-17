@@ -9,7 +9,6 @@ const diagramOptions = ['ph', 'ts']
 function App() {
   const [fluid, setFluid] = useState('Xenon')
   const [diagram, setDiagram] = useState('ph')  // 'ph' or 'ts'
-  const [zoomParams, setZoomParams] = useState(null)
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '2rem', fontFamily: 'sans-serif' }}>
@@ -19,7 +18,7 @@ function App() {
 
       <FluidSelector fluid={fluid} setFluid={setFluid} options={fluidOptions} />
       <DiagramTypeSelector diagram={diagram} setDiagram={setDiagram} options={diagramOptions} />
-      <ThermoPlot fluid={fluid} diagram={diagram} zoomParams={zoomParams} setZoomParams={setZoomParams}/>
+      <ThermoPlot fluid={fluid} diagram={diagram} />
     </div>
   )
 }

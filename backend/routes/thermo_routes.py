@@ -12,6 +12,7 @@ def ph_data():
     t_step = int(request.args.get('t_step', 25))
     h_min = float(request.args.get('h_min', 0))
     h_max = float(request.args.get('h_max', 1e6))
+
     p_min = float(request.args.get('p_min', 1e5))
     p_max = float(request.args.get('p_max', PropsSI('PCRIT', fluid) * 2.99))
 
@@ -21,14 +22,16 @@ def ph_data():
 
     pressures = np.logspace(np.log10(p_min), np.log10(p_max), 300)
 
-    isotherms = []
+    isotherms = [] 
     for T in np.arange(T_min, T_max + 1, t_step):
         h_vals, p_vals = [], []
         for p in pressures:
             try:
-                h = PropsSI('H', 'T', T, 'P', p, fluid) / 1000
+                h = PropsSI('H', 'T', T, 'P', p, fluid) 
+                print("h:", h, "p:", p)
+
                 if h_min <= h <= h_max:
-                    h_vals.append(h)
+                    h_vals.append(h /1000)
                     p_vals.append(p / 1e5)
             except:
                 continue
