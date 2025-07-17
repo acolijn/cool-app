@@ -96,13 +96,40 @@ function buildTSTraces(data) {
   return traces
 }
 
+//import React, { useState } from 'react'
 
 function ThermoPlot({ fluid, diagram }) {
   //const [zoomParams, setZoomParams] = useState(null)
   console.log('Rendering ThermoPlot for', fluid, 'diagram:', diagram)
 
-  // Fetch the thermo data based on fluid, diagram type, and zoom parameters
-  const data = useThermoData(fluid, diagram)
+  // t_step state for isotherm spacing (default 15)
+  const [tStep, setTStep] = useState(15)
+  const [tStepInput, setTStepInput] = useState(15)
+
+  // Fetch the thermo data based on fluid, diagram type, and tStep
+  const data = useThermoData(fluid, diagram, tStep)
+
+  // UI for t_step input (only for PH diagram)
+  const tStepSelector = diagram === 'ph' && (
+    <div style={{ marginBottom: 12 }}>
+      <label htmlFor="tStepInput">ΔT between isotherms (°C): </label>
+      <input
+        id="tStepInput"
+        type="number"
+        min={1}
+        max={100}
+        value={tStepInput}
+        onChange={e => setTStepInput(Number(e.target.value))}
+        onBlur={() => {
+          if (tStepInput !== tStep) setTStep(tStepInput)
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && tStepInput !== tStep) setTStep(tStepInput)
+        }}
+        style={{ width: 60, marginLeft: 4 }}
+      />
+    </div>
+  )
 
   if (!data) return <p style={{ color: '#666' }}>Loading...</p>
 
@@ -139,11 +166,15 @@ function ThermoPlot({ fluid, diagram }) {
   layout.margin = { l: 80, r: 40, b: 70, t: 30 }
   layout.font = { family: 'sans-serif', size: 16 }
 
-  return (<Plot
-
-    data={traces}
-    layout={layout}
-    config={{ responsive: true }}/>
+  return (
+    <div>
+      {tStepSelector}
+      <Plot
+        data={traces}
+        layout={layout}
+        config={{ responsive: true }}
+      />
+    </div>
   )
 }
 

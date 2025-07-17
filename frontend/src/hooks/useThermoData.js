@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 
 //function useThermoData(fluid, diagram = 'ph') {
-function useThermoData(fluid, diagram = 'ph') {
+function useThermoData(fluid, diagram = 'ph', t_step = 15) {
   const [data, setData] = useState(null)
   
   useEffect(() => {
@@ -14,7 +14,7 @@ function useThermoData(fluid, diagram = 'ph') {
     switch (diagram) {
       case 'ph':
         route = 'ph-data'
-        stepParam = 't_step=15'
+        stepParam = `t_step=${t_step}`
         break
       case 'ts':
         route = 'ts-data'
@@ -29,7 +29,7 @@ function useThermoData(fluid, diagram = 'ph') {
     const queryParams = new URLSearchParams()
 
     if (diagram === 'ph') {
-      queryParams.append('t_step', 15)
+      queryParams.append('t_step', t_step)
     } else if (diagram === 'ts') {
       queryParams.append('p_step', 15)
     }
@@ -46,7 +46,7 @@ function useThermoData(fluid, diagram = 'ph') {
       .then(setData)
       .catch(err => console.error('useThermoData: Error loading thermo data:', err))
 
-  }, [fluid, diagram])
+  }, [fluid, diagram, t_step])
 
   return data
 }
