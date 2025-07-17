@@ -31,9 +31,8 @@ function useThermoData(fluid, diagram = 'ph') {
     if (diagram === 'ph') {
       queryParams.append('t_step', 15)
     } else if (diagram === 'ts') {
-      queryParams.append('p_steps', 15)
+      queryParams.append('p_step', 15)
     }
-
 
     const fullUrl = `${baseUrl}&${queryParams.toString()}`
 

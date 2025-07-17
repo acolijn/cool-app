@@ -85,7 +85,7 @@ def ph_data():
 def ts_data():
     print("Fetching TS data.........")
     fluid = request.args.get('fluid', 'Xenon')
-    p_steps = int(request.args.get('p_steps', 10))  # NEW: use p_steps
+    p_step = int(request.args.get('p_step', 10))  # NEW: use p_steps
 
     T_crit = PropsSI('TCRIT', fluid)
     T_min = np.ceil((PropsSI('TMIN', fluid) + 1) / 10) * 10
@@ -93,7 +93,7 @@ def ts_data():
 
     p_min = 1e5
     p_max = PropsSI('PCRIT', fluid) * 2.99
-    pressures = np.logspace(np.log10(p_min), np.log10(p_max), p_steps)
+    pressures = np.logspace(np.log10(p_min), np.log10(p_max), p_step)
 
     isobars = []
     for p in pressures:
