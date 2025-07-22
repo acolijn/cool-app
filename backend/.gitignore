@@ -1,0 +1,5 @@
+# add cool directory 
+# Ignore the cool directory
+cool/
+# Ignore __pycache__ directories
+__pycache__/
