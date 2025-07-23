@@ -1,50 +1,50 @@
 import { useEffect, useState } from 'react'
 
-//function useThermoData(fluid, diagram = 'ph') {
 function useThermoData(fluid, diagram = 'ph', t_step = 15) {
   const [data, setData] = useState(null)
-  
+
   useEffect(() => {
+    if (!fluid || !diagram) return
     setData(null)
 
-    let route = ''
-    let stepParam = ''
-    console.log('useThermoData: Fetching thermo data for fluid:', fluid, 'diagram:', diagram)
-    
-    switch (diagram) {
-      case 'ph':
-        route = 'ph-data'
-        stepParam = `t_step=${t_step}`
-        break
-      case 'ts':
-        route = 'ts-data'
-        stepParam = 'p_step=15'
-        break
-      default:
-        console.error('useThermoData: Unknown diagram type:', diagram)
-        return
+    const routeMap = {
+      ph: 'ph-data',
+      ts: 'ts-data'
     }
-    const baseUrl = `http://localhost:5050/thermo/${route}?fluid=${fluid}`
 
-    const queryParams = new URLSearchParams()
+    const route = routeMap[diagram]
+    if (!route) {
+      console.error(`useThermoData: Unknown diagram type "${diagram}"`)
+      return
+    }
+
+    const queryParams = new URLSearchParams({ fluid })
 
     if (diagram === 'ph') {
-      queryParams.append('t_step', t_step)
+      queryParams.append('t_step', t_step || 15)
     } else if (diagram === 'ts') {
       queryParams.append('p_step', 15)
     }
 
-    const fullUrl = `${baseUrl}&${queryParams.toString()}`
+    const fullUrl = `/thermo/${route}?${queryParams.toString()}`
+    console.log(`useThermoData: Fetching from ${fullUrl}`)
 
-    console.log('useThermoData: Fetching', fullUrl)
-
-    fetch(fullUrl)
+    fetch(fullUrl, {
+      headers: {
+        Accept: 'application/json'
+      }
+    })
       .then(res => {
-        if (!res.ok) throw new Error('useThermoData: Failed to fetch thermo data')
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`)
         return res.json()
       })
-      .then(setData)
-      .catch(err => console.error('useThermoData: Error loading thermo data:', err))
+      .then(json => {
+        console.log('useThermoData: Received data:', json)
+        setData(json)
+      })
+      .catch(err => {
+        console.error('useThermoData: Failed to load data:', err)
+      })
 
   }, [fluid, diagram, t_step])
 
